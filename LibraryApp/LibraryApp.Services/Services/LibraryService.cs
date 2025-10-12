@@ -22,7 +22,8 @@ namespace LibraryApp.Application.Services
                 Type = (int)LibraryItemTypeEnum.Book,
                 IsBorrowed = false
             };
-
+            //if(bookEntity.Pages > 100) 
+            //    throw new ArgumentOutOfRangeException(nameof(pages), "Books with more than 100 pages are not allowed.");
             _repository.AddLibraryItem(bookEntity);
 
             return new Book(bookEntity.Id, bookEntity.Title, bookEntity.Author);
