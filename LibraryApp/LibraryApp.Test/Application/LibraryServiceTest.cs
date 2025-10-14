@@ -81,40 +81,47 @@ namespace LibraryApp.Test.Application
 
         //Create a Unit Test to Borrow an Item
         [Fact]
-        public void WhenAnItemIsBorrowed_ThenItShouldBeMarkedAsBorrowed()
+        public void BorrowItem_ShouldSucceed_WhenMemberAndItemAreValid()
         {
-            //Arrange
+            // Arrange
             var memberId = 1;
-            var itemId = 1;
-            string message = string.Empty;
-            var memberEntity = new Member
+            var itemId = 10;
+
+            var member = new Member
             {
                 Id = memberId,
-                Name = "Alice Johnson",
-                MembershipStartDate = DateTime.UtcNow,
-                MembershipEndDate = DateTime.UtcNow.AddYears(1)
+                Name = "Andrés",
+                MembershipStartDate = DateTime.UtcNow.AddDays(-10),
+                MembershipEndDate = DateTime.UtcNow.AddDays(10)
             };
-            var bookEntity = new LibraryItem
+
+            var libraryItem = new LibraryItem
             {
                 Id = itemId,
-                Title = "The Blue Deamon",
-                Author = "John Smith",
-                Pages = 95,
-                Type = (int)LibraryItemTypeEnum.Book,
+                Title = "Clean Code",
+                Author = "Robert C. Martin",
                 IsBorrowed = false
             };
-            _mockRepository.Setup(r => r.GetMemberById(memberId)).Returns(memberEntity);
-            _mockRepository.Setup(r => r.GetLibraryItemById(itemId)).Returns(bookEntity);
-            _mockRepository.Setup(r => r.UpdateLibraryItem(It.IsAny<LibraryItem>()))
-                .Callback<LibraryItem>(item =>
-                {
-                    // Simulate updating the item in the database
-                });
-            //Act
-            _libraryService.BorrowItem(memberId, itemId,out message);
-            //Assert
-            Assert.True(bookEntity.IsBorrowed);
-        }
 
+            // Simulamos los datos que devolvería el repositorio
+            _mockRepository.Setup(r => r.GetMemberById(memberId)).Returns(member);
+            _mockRepository.Setup(r => r.GetLibraryItemById(itemId)).Returns(libraryItem);
+            _mockRepository.Setup(r => r.GetBorrowedItem(memberId, itemId)).Returns((BorrowItem?)null);
+
+            string message;
+
+            // Act
+            var result = _libraryService.BorrowItem(memberId, itemId, out message);
+
+            // Assert
+            Assert.True(result);  // ✅ Debe permitir el préstamo
+            Assert.Contains("borrowed successfully", message);  // ✅ Mensaje esperado
+            _mockRepository.Verify(r => r.AddBorrowedItem(It.Is<BorrowItem>(b =>
+                b.MemberId == memberId &&
+                b.LibraryItemId == itemId &&
+                b.Active == true
+            )), Times.Once);
         }
-}
+    }
+
+    }
