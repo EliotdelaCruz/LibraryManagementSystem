@@ -100,5 +100,10 @@ namespace LibraryApp.Infrastructure.Data
             _context.LibraryItems.Update(libraryItem);
             _context.SaveChanges();
         }
+
+        public LibraryItem? GetLibraryItemById(int itemId)
+        {
+            return _context.LibraryItems.Find(itemId);
+        }
     }
 }
