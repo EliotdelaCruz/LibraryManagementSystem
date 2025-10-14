@@ -87,42 +87,42 @@ public class LibraryController : ControllerBase
         return Ok(members);
     }
 
-
     //// POST: api/library/borrow
     [HttpPost("borrow")]
-    public IActionResult borrowItem([FromBody] BorrowReturnDTO itemId)
+    public IActionResult BorrowItem([FromBody] BorrowReturnDTO dto)
     {
-        if (itemId == null || itemId.MemberId <= 0 || itemId.ItemId <= 0)
+        if (dto == null || dto.MemberId <= 0 || dto.ItemId <= 0)
         {
             return BadRequest("Invalid borrow data.");
         }
-        var success = _service.BorrowItem(itemId.MemberId, itemId.ItemId, out string message);
+
+        string message; // ✅ Declaramos la variable message
+        var success = _service.BorrowItem(dto.MemberId, dto.ItemId, out message); // ✅ Usamos out
+
         if (success)
-        {
             return Ok(message);
-        }
         else
-        {
             return BadRequest(message);
-        }
     }
 
-    //// POST: api/library/return
+    /// POST: api/library/return
     [HttpPost("return")]
-    public IActionResult returnItem([FromBody] BorrowReturnDTO itemId)
+    public IActionResult ReturnItem([FromBody] BorrowReturnDTO dto)
     {
-        if (itemId == null || itemId.MemberId <= 0 || itemId.ItemId <= 0)
+        if (dto == null || dto.MemberId <= 0 || dto.ItemId <= 0)
         {
-            return BadRequest("Invalid borrow data.");
+            return BadRequest("Invalid return data.");
         }
-        var success = _service.ReturnItem(itemId.MemberId, itemId.ItemId, out string message);
+
+        string message; // ✅ Declaramos la variable message
+        var success = _service.ReturnItem(dto.MemberId, dto.ItemId, out message); // ✅ Usamos out
+
         if (success)
-        {
             return Ok(message);
-        }
         else
-        {
             return BadRequest(message);
-        }
     }
+
+
+
 }
