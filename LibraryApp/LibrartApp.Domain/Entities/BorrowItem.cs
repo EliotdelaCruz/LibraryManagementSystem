@@ -11,8 +11,10 @@ namespace LibrartApp.Domain.Entities
         public int Id { get; set; }
         public int MemberId { get; set; }
         public int LibraryItemId { get; set; }
-
-      public Member? Member { get; set; }
+        public DateTime BorrowDate { get; set; }
+        public DateTime DueDate { get; set; }
+        public bool Active { get; set; } = true; // Soft delete flag
+        public Member? Member { get; set; }
         public LibraryItem? LibraryItem { get; set; }
 
     }

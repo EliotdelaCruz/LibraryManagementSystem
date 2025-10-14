@@ -10,6 +10,9 @@ namespace LibrartApp.Domain.Entities
     {
      public int Id { get; set; }
      public required string Name { get; set; }
-     public List<BorrowItem> BorrowedItems { get; set; } = new();
+        public DateTime MembershipStartDate { get; set; }
+        public DateTime MembershipEndDate { get; set; }
+
+        public List<BorrowItem> BorrowedItems { get; set; } = new();
     }
 }
