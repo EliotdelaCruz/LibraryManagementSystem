@@ -1,4 +1,5 @@
 ﻿using LibrartApp.Domain;
+using LibrartApp.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,12 +12,13 @@ namespace LibraryApp.Application.Abstractions
     {
         Book AddBook(string title, string author, int pages = 0);
         Magazine AddMagazine(string title, int issueNumber, string publisher);
-        bool BorrowItem(int memberId, int itemId, out string message);
-        IEnumerable<LibraryItem> FindItems(string? term);
-        Member RegisterMember(string name);
+        bool BorrowItem(int memberId, int itemId,  out string message);
+        IEnumerable<LibrartApp.Domain.LibraryItem> FindItems(string? term);
+        LibrartApp.Domain.Member RegisterMember(string name);
         bool ReturnItem(int memberId, int itemId, out string message);
-        IEnumerable<LibraryItem> GetAllLibraryItems();
-        IEnumerable<Member> GetAllMembers();
+        IEnumerable<LibrartApp.Domain.LibraryItem> GetAllLibraryItems();
+        IEnumerable<LibrartApp.Domain.Member> GetAllMembers();
+        IEnumerable<BorrowItem> GetBorrowedItemsByMember(int memberId);
 
     }
 }

@@ -1,4 +1,5 @@
 ﻿using LibrartApp.Domain;
+using LibrartApp.Domain.Entities;
 using LibrartApp.Domain.Enums;
 using LibraryApp.Application.Abstractions;
 
@@ -8,6 +9,10 @@ namespace LibraryApp.Application.Services
     public sealed class LibraryService : ILibraryService
     {
         private readonly ILibraryAppRepository _repository;
+        //lista privada como almacenamiento temporal
+        private readonly List<BorrowItem> _borrowedItems = new();
+        private readonly List<LibrartApp.Domain.Entities.Member> _members = new();
+
         public LibraryService(ILibraryAppRepository repository)
         {
             _repository = repository;
@@ -43,18 +48,20 @@ namespace LibraryApp.Application.Services
 
             return new LibrartApp.Domain.Magazine(magEntity.Id, magEntity.Title, magEntity.IssueNumber ?? 0, magEntity.Publisher);
         }
-        public Member RegisterMember(string name)
+        public LibrartApp.Domain.Member RegisterMember(string name)
         {
             var memberEntity = new LibrartApp.Domain.Entities.Member
             {
-                Name = name
+                Name = name,
+                MembershipStartDate = DateTime.UtcNow,
+                MembershipEndDate = DateTime.UtcNow.AddYears(1)
             };
 
             _repository.AddMember(memberEntity);
 
             return new LibrartApp.Domain.Member(memberEntity.Id, memberEntity.Name);
         }
-        public IEnumerable<LibraryItem> FindItems(string? term)
+        public IEnumerable<LibrartApp.Domain.LibraryItem> FindItems(string? term)
         {
             //if (string.IsNullOrWhiteSpace(term)) return _items;
             //term = term.Trim().ToLowerInvariant();
@@ -63,95 +70,82 @@ namespace LibraryApp.Application.Services
         }
         public bool BorrowItem(int memberId, int itemId, out string message)
         {
-            var member = _repository.GetMemberById(memberId);
+            message = "";
 
+            var member = _members.FirstOrDefault(m => m.Id == memberId);
             if (member == null)
             {
-                message = "Member not found";
+                message = "Member not found.";
                 return false;
             }
 
-            var libraryItemEntity = _repository.GetLibraryItem(itemId);
-
-            if (libraryItemEntity == null)
+            // 1️⃣ Validar membresía vigente
+            if (DateTime.UtcNow > member.MembershipEndDate)
             {
-                message = "Item not found";
+                message = "Membership expired — please renew before borrowing items.";
                 return false;
             }
 
-            if (libraryItemEntity.IsBorrowed)
+            // 2️⃣ Validar límite de 3 préstamos activos
+            var activeBorrowCount = _borrowedItems.Count(b => b.MemberId == memberId && b.Active);
+            if (activeBorrowCount >= 3)
             {
-                message = $"{libraryItemEntity.Title}' is already borrowed.";
+                message = "Borrow limit reached — members can only borrow up to 3 items.";
                 return false;
             }
 
-            libraryItemEntity.IsBorrowed = true;
+            // 3️⃣ Validar préstamos vencidos
+            var hasExpiredBorrow = _borrowedItems.Any(b =>
+                b.MemberId == memberId && b.DueDate < DateTime.UtcNow && b.Active);
 
-            _repository.UpdateLibraryItem(libraryItemEntity);
-            _repository.AddBorrowedItem(new LibrartApp.Domain.Entities.BorrowItem { MemberId = memberId, LibraryItemId = itemId });
+            if (hasExpiredBorrow)
+            {
+                message = "You have overdue items — please return them before borrowing new ones.";
+                return false;
+            }
 
-            message = $"'{libraryItemEntity.Title}' borrowed by {member.Name}.";
+            // 4️⃣ Registrar préstamo nuevo
+            var borrow = new BorrowItem
+            {
+                MemberId = memberId,
+                LibraryItemId = itemId,
+                BorrowDate = DateTime.UtcNow,
+                DueDate = DateTime.UtcNow.AddDays(3),
+                Active = true
+            };
 
+            _borrowedItems.Add(borrow);
+            message = $"Item {itemId} borrowed successfully. Due date: {borrow.DueDate:MM/dd/yyyy}.";
             return true;
         }
+
+
+
+
         public bool ReturnItem(int memberId, int itemId, out string message)
         {
-            //var member = _members.FirstOrDefault(m => m.Id == memberId);
-            //var item = _items.FirstOrDefault(i => i.Id == itemId);
-            //if (member is null) { message = "Member not found."; return false; }
-            //if (item is null) { message = "Item not found."; return false; }
-            //try
-            //{
-            //    member.ReturnItem(item);
-            //    message = $"'{item.Title}' returned by {member.Name}.";
-            //    return true;
-            //}
-            //catch (Exception ex)
-            //{
-            //    message = ex.Message;
-            //    return false;
-            //}
+            message = "";
 
-            var member = _repository.GetMemberById(memberId);
-
-            if (member == null)
+            var borrow = _borrowedItems.FirstOrDefault(b => b.MemberId == memberId && b.LibraryItemId == itemId && b.Active);
+            if (borrow == null)
             {
-                message = "Member not found";
+                message = "No active borrow found for this item.";
                 return false;
             }
 
-            var libraryItemEntity = _repository.GetLibraryItem(itemId);
+            borrow.Active = false;
+            borrow.DueDate = DateTime.UtcNow;
 
-            if (libraryItemEntity == null)
-            {
-                message = "Item not found";
-                return false;
-            }
-
-            if (!libraryItemEntity.IsBorrowed)
-            {
-                message = $"{libraryItemEntity.Title}' isn't borrowed.";
-                return false;
-            }
-
-            var borrowedItemEntity = _repository.GetBorrowedItem(member.Id, libraryItemEntity.Id);
-
-            if (borrowedItemEntity == null)
-            {
-                message = "Item borrowed by someone else";
-                return false;
-            }
-
-            libraryItemEntity.IsBorrowed = false;
-
-            _repository.UpdateLibraryItem(libraryItemEntity);
-            _repository.ReturnBorrowedItem(borrowedItemEntity.Id);
-
-            message = $"'{libraryItemEntity.Title}' returned by {member.Name}.";
-
+            message = $"Item {itemId} returned successfully.";
             return true;
         }
 
+        public IEnumerable<BorrowItem> GetBorrowedItemsByMember(int memberId)
+        {
+            return _borrowedItems
+                .Where(b => b.MemberId == memberId && b.Active)
+                .ToList();
+        }
         public IEnumerable<LibrartApp.Domain.LibraryItem> GetAllLibraryItems()
         {
             var libraryItemsEntities = _repository.GetAllLibraryItems();
@@ -194,10 +188,10 @@ namespace LibraryApp.Application.Services
 
         private LibrartApp.Domain.Member MapToDomainMembersModel(LibrartApp.Domain.Entities.Member entity)
         {
-            return new Member(entity.Id, entity.Name);
+            return new LibrartApp.Domain.Member(entity.Id, entity.Name);
 
             // Unfinished attemp for returning BorrowedItems
-            var member = new Member(entity.Id, entity.Name);
+            var member = new LibrartApp.Domain.Member(entity.Id, entity.Name);
             foreach (var itemId in entity.BorrowedItems)
             {
 

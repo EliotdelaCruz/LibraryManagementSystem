@@ -19,6 +19,7 @@ namespace LibraryApp.Application.Abstractions
         void AddBorrowedItem(BorrowItem borrowedItem);
         void ReturnBorrowedItem(int borrowedItemId);
         void AddMember(Member member);
+        LibraryItem? GetLibraryItemById(int itemId);
     }
 
 }
